@@ -35,30 +35,6 @@ describe('IndexerService', () => {
         .spyOn(StreamClient.prototype, 'configure')
         .mockImplementation(() => {});
 
-      //   jest
-      //     .spyOn(StreamClient.prototype, Symbol.asyncIterator)
-      //     .mockImplementation(async function* () {
-      //       yield {
-      //         data: {
-      //           data: [
-      //             {
-      //               header: { blockNumber: '123' },
-      //               events: [
-      //                 {
-      //                   transaction: { meta: { hash: '0xabc' } },
-      //                   event: {
-      //                     data: [
-      //                       { toBigInt: () => BigInt('0x123') },
-      //                       { toBigInt: () => BigInt('0x456') },
-      //                     ],
-      //                   },
-      //                 },
-      //               ],
-      //             },
-      //           ],
-      //         },
-      //       };
-      //     });
       jest
         .spyOn(StreamClient.prototype, Symbol.asyncIterator)
         .mockImplementation(
