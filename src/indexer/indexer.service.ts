@@ -2,8 +2,8 @@ import { StreamClient, v1alpha2 } from '@apibara/protocol';
 import { Filter, FieldElement, v1alpha2 as starknet } from '@apibara/starknet';
 import { hash, validateAndParseAddress } from 'starknet';
 import { AccountsService } from '../accounts/accounts.service';
-import { env } from 'src/common/env';
-// import { exit } from 'process';
+import { env } from '../common/env';
+import { exit } from 'process';
 
 const ARGENT_PROXY_CLASS_HASH =
   '0x025ec026985a3bf9d0cc1fe17326b245dfdc3ff89b8fde106542a3ea56c5a918';
@@ -12,10 +12,9 @@ export class IndexerService {
   constructor(private accountsService: AccountsService) {}
 
   async onModuleInit() {
-    console.log('Init');
     this.startIndexer().catch((error: any) => {
       console.error('Indexer error:', error);
-      //   exit(1);
+      exit(1);
     });
   }
 
