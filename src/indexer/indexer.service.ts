@@ -1,19 +1,22 @@
 import { StreamClient, v1alpha2 } from '@apibara/protocol';
 import { Filter, FieldElement, v1alpha2 as starknet } from '@apibara/starknet';
-import { hash, validateAndParseAddress } from 'starknet';
+import { validateAndParseAddress } from 'starknet';
 import { AccountsService } from '../accounts/accounts.service';
 import { env } from '../common/env';
 import { exit } from 'process';
+import { Logger } from '@nestjs/common';
 
 const ARGENT_PROXY_CLASS_HASH =
   '0x025ec026985a3bf9d0cc1fe17326b245dfdc3ff89b8fde106542a3ea56c5a918';
 
 export class IndexerService {
+  private readonly logger = new Logger(IndexerService.name);
+
   constructor(private accountsService: AccountsService) {}
 
   async onModuleInit() {
     this.startIndexer().catch((error: any) => {
-      console.error('Indexer error:', error);
+      this.logger.error('Indexer error:', error);
       exit(1);
     });
   }
@@ -21,12 +24,10 @@ export class IndexerService {
   private async startIndexer() {
     const address = FieldElement.fromBigInt(BigInt(ARGENT_PROXY_CLASS_HASH));
 
-    const accountCreatedKey = [
-      FieldElement.fromBigInt(hash.getSelectorFromName('AccountCreated')),
-    ];
-
     const filter = Filter.create()
-      .addEvent((ev) => ev.withFromAddress(address).withKeys(accountCreatedKey))
+      .addTransaction((builder) =>
+        builder.deployAccount().withClassHash(address),
+      )
       .encode();
 
     const client = new StreamClient({
@@ -52,16 +53,16 @@ export class IndexerService {
               continue;
             }
 
-            console.log(event.data);
+            this.logger.log(event.data);
 
             const ownerAddress = FieldElement.toBigInt(event.data[0]);
             const guardianAddress = FieldElement.toBigInt(event.data[1]);
             const transactionHash = FieldElement.toHex(hash);
 
-            console.log('New Account Created:');
-            console.log(`Owner: 0x${ownerAddress.toString(16)}`);
-            console.log(`Guardian: 0x${guardianAddress.toString(16)}`);
-            console.log(`Transaction Hash: ${transactionHash}`);
+            this.logger.log('New Account Created:');
+            this.logger.log(`Owner: 0x${ownerAddress.toString(16)}`);
+            this.logger.log(`Guardian: 0x${guardianAddress.toString(16)}`);
+            this.logger.log(`Transaction Hash: ${transactionHash}`);
 
             await this.accountsService.create({
               ownerAddress: validateAndParseAddress(
