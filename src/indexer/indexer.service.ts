@@ -3,7 +3,7 @@ import { Filter, FieldElement, v1alpha2 as starknet } from '@apibara/starknet';
 import { validateAndParseAddress } from 'starknet';
 import { AccountsService } from '../accounts/accounts.service';
 import { env } from '../common/env';
-import { exit } from 'process';
+// import { exit } from 'process';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
 const ARGENT_PROXY_CLASS_HASH =
