@@ -3,7 +3,7 @@ import { Document } from 'mongoose';
 
 @Schema()
 export class Account extends Document {
-  @Prop({ required: true })
+  @Prop({ required: true, unique: true })
   ownerAddress: string;
 
   @Prop({ required: true })
