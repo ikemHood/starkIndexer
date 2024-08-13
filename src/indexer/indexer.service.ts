@@ -17,7 +17,7 @@ export class IndexerService {
   async onModuleInit() {
     this.startIndexer().catch((error: any) => {
       this.logger.error('Indexer error:', error);
-      exit(1); //TODO: not idle for prod.
+      // exit(1); //TODO: not idle for prod.
     });
   }
 
@@ -75,20 +75,24 @@ export class IndexerService {
               // this.logger.log(`Guardian: 0x${guardianAddress.toString(16)}`);
               // this.logger.log(`Transaction Hash: ${transactionHash}`);
 
-              await this.accountsService.create({
-                ownerAddress: validateAndParseAddress(
-                  `0x${ownerAddress.toString(16)}`,
-                ),
-                guardianAddress: validateAndParseAddress(
-                  `0x${guardianAddress.toString(16)}`,
-                ),
-                transactionHash: transactionHash,
-                BlockNumber: Number(block.header.blockNumber),
-                createdAt: new Date(
-                  parseInt(String(block.header.timestamp.seconds)) * 1000,
-                ),
-              });
-              this.logger.log('Account event saved');
+              try {
+                await this.accountsService.create({
+                  ownerAddress: validateAndParseAddress(
+                    `0x${ownerAddress.toString(16)}`,
+                  ),
+                  guardianAddress: validateAndParseAddress(
+                    `0x${guardianAddress.toString(16)}`,
+                  ),
+                  transactionHash: transactionHash,
+                  BlockNumber: Number(block.header.blockNumber),
+                  createdAt: new Date(
+                    parseInt(String(block.header.timestamp.seconds)) * 1000,
+                  ),
+                });
+                this.logger.log('Account event saved');
+              } catch (e: any) {
+                console.log(e);
+              }
             }
           }
         }
