@@ -7,6 +7,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { AccountsModule } from './accounts/accounts.module';
 import { IndexerModule } from './indexer/indexer.module';
 import { env } from './common/env';
+// import { AccountsService } from './accounts/accounts.service';
 
 @Module({
   imports: [

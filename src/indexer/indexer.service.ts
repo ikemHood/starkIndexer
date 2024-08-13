@@ -4,34 +4,37 @@ import { validateAndParseAddress } from 'starknet';
 import { AccountsService } from '../accounts/accounts.service';
 import { env } from '../common/env';
 import { exit } from 'process';
-import { Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 
 const ARGENT_PROXY_CLASS_HASH =
   '0x025ec026985a3bf9d0cc1fe17326b245dfdc3ff89b8fde106542a3ea56c5a918';
-
+@Injectable()
 export class IndexerService {
   private readonly logger = new Logger(IndexerService.name);
 
-  constructor(private accountsService: AccountsService) {}
+  constructor(@Inject() private readonly accountsService: AccountsService) {}
 
   async onModuleInit() {
     this.startIndexer().catch((error: any) => {
       this.logger.error('Indexer error:', error);
-      exit(1);
+      exit(1); //TODO: not idle for prod.
     });
   }
 
   private async startIndexer() {
     const address = FieldElement.fromBigInt(BigInt(ARGENT_PROXY_CLASS_HASH));
 
+    //filter accounts created with Argents ClassHash
     const filter = Filter.create()
-      .addTransaction((builder) =>
-        builder.deployAccount().withClassHash(address),
-      )
+      .withHeader({ weak: true })
+      .addTransaction((tx) => tx.deployAccount().withClassHash(address))
       .encode();
 
     const client = new StreamClient({
       url: env.apibara.dnaClient,
+      clientOptions: {
+        'grpc.max_receive_message_length': 128 * 1_048_576,
+      },
       token: env.apibara.token,
     });
 
@@ -42,39 +45,51 @@ export class IndexerService {
     });
 
     for await (const message of client) {
-      if (message.data?.data) {
-        for (const item of message.data.data) {
-          const block = starknet.Block.decode(item);
-          const blockNumber = block.header?.blockNumber;
+      this.logger.log('message received');
+      if (message.message === 'data') {
+        const { data } = message.data;
 
-          for (const { transaction, event } of block.events) {
+        for (const item of data) {
+          const block = starknet.Block.decode(Buffer.from(item));
+
+          for (const { transaction, receipt } of block.transactions) {
             const hash = transaction?.meta?.hash;
-            if (!event || !event.data || !hash) {
+            if (!receipt.events || !hash) {
               continue;
             }
 
-            this.logger.log(event.data);
+            const targetEvent = receipt.events.find(
+              (event) => String(event?.index) === '1',
+            );
 
-            const ownerAddress = FieldElement.toBigInt(event.data[0]);
-            const guardianAddress = FieldElement.toBigInt(event.data[1]);
-            const transactionHash = FieldElement.toHex(hash);
+            if (targetEvent) {
+              const ownerAddress = FieldElement.toBigInt(targetEvent.data[0]);
+              const guardianAddress = FieldElement.toBigInt(
+                targetEvent.data[1],
+              );
 
-            this.logger.log('New Account Created:');
-            this.logger.log(`Owner: 0x${ownerAddress.toString(16)}`);
-            this.logger.log(`Guardian: 0x${guardianAddress.toString(16)}`);
-            this.logger.log(`Transaction Hash: ${transactionHash}`);
+              const transactionHash = FieldElement.toHex(hash);
 
-            await this.accountsService.create({
-              ownerAddress: validateAndParseAddress(
-                `0x${ownerAddress.toString(16)}`,
-              ),
-              guardianAddress: validateAndParseAddress(
-                `0x${guardianAddress.toString(16)}`,
-              ),
-              transactionHash: transactionHash,
-              BlockNumber: Number(blockNumber),
-              createdAt: new Date(),
-            });
+              // this.logger.log('Transaction Details:');
+              // this.logger.log(`Owner: 0x${ownerAddress.toString(16)}`);
+              // this.logger.log(`Guardian: 0x${guardianAddress.toString(16)}`);
+              // this.logger.log(`Transaction Hash: ${transactionHash}`);
+
+              await this.accountsService.create({
+                ownerAddress: validateAndParseAddress(
+                  `0x${ownerAddress.toString(16)}`,
+                ),
+                guardianAddress: validateAndParseAddress(
+                  `0x${guardianAddress.toString(16)}`,
+                ),
+                transactionHash: transactionHash,
+                BlockNumber: Number(block.header.blockNumber),
+                createdAt: new Date(
+                  parseInt(String(block.header.timestamp.seconds)) * 1000,
+                ),
+              });
+              this.logger.log('Account event saved');
+            }
           }
         }
       }

@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { IndexerService } from './indexer.service';
 import { AccountsService } from '../accounts/accounts.service';
 import { StreamClient } from '@apibara/protocol';
+import { FieldElement, v1alpha2 as starknet } from '@apibara/starknet';
 import { StreamDataResponse__Output } from '@apibara/protocol/dist/proto/apibara/node/v1alpha2/StreamDataResponse';
 
 describe('IndexerService', () => {
@@ -39,25 +40,38 @@ describe('IndexerService', () => {
         .spyOn(StreamClient.prototype, Symbol.asyncIterator)
         .mockImplementation(
           async function* (): AsyncGenerator<StreamDataResponse__Output> {
-            yield {
-              streamId: 'stream-1',
-              message: {
-                data: [
-                  {
-                    header: { blockNumber: '123' },
+            const block = starknet.Block.encode({
+              header: {
+                blockNumber: 123,
+                timestamp: { seconds: 1691500000 },
+              },
+              transactions: [
+                {
+                  transaction: {
+                    meta: {
+                      hash: FieldElement.fromBigInt(BigInt('0xabc')),
+                    },
+                  },
+                  receipt: {
                     events: [
                       {
-                        transaction: { meta: { hash: '0xabc' } },
-                        event: {
-                          data: [
-                            { toBigInt: () => BigInt('0x123') },
-                            { toBigInt: () => BigInt('0x456') },
-                          ],
-                        },
+                        index: 1,
+                        data: [
+                          FieldElement.fromBigInt(BigInt('0x123')),
+                          FieldElement.fromBigInt(BigInt('0x456')),
+                        ],
                       },
                     ],
                   },
-                ],
+                },
+              ],
+            });
+
+            yield {
+              streamId: 'stream-1',
+              message: 'data',
+              data: {
+                data: [block],
               },
             } as unknown as StreamDataResponse__Output;
           },

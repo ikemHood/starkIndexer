@@ -17,6 +17,9 @@ export const env = {
   db: {
     url: envVar.get('DB_URL').required().asUrlString(),
   },
+  rpc: {
+    url: envVar.get('STARKNET_RPC').required().asUrlString(),
+  },
   apibara: {
     token: envVar.get('DNA_TOKEN').required().asString(),
     dnaClient: envVar.get('DNA_CLIENT_URL').required().asUrlString(),
